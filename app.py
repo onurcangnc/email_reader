@@ -1,104 +1,100 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import imaplib
-import email
-from email.header import decode_header
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
+app.secret_key = "your-secret-key"
 
-# Helper function to decode MIME encoded words
-def decode_mime_words(s):
-    decoded_words = decode_header(s)
-    decoded_string = ""
-    for word, encoding in decoded_words:
-        if isinstance(word, bytes):
-            decoded_string += word.decode(encoding) if encoding else word.decode('utf-8')
-        else:
-            decoded_string += word
-    return decoded_string
-
-# Function to get email body from message
-def get_email_body(msg):
-    if msg.is_multipart():
-        for part in msg.walk():
-            content_type = part.get_content_type()
-            content_disposition = str(part.get("Content-Disposition"))
-            if "attachment" not in content_disposition:
-                try:
-                    if content_type == "text/plain":
-                        return part.get_payload(decode=True).decode("utf-8")
-                    elif content_type == "text/html":
-                        return part.get_payload(decode=True).decode("utf-8")
-                except UnicodeDecodeError:
-                    return part.get_payload(decode=True).decode("ISO-8859-9")
-    else:
-        return msg.get_payload(decode=True).decode("utf-8")
-    return None
-
-# Helper function to get the current week's date range
-def get_week_date_range():
-    today = datetime.now()
-    start_of_week = today - timedelta(days=today.weekday())  # Monday
-    end_of_week = start_of_week + timedelta(days=6)  # Sunday
-    return start_of_week, end_of_week
-
-# Main function to fetch emails
-def fetch_emails(username, password):
-    mail = imaplib.IMAP4_SSL("mail.bilkent.edu.tr")
-    mail.login(username, password)
-    mail.select("inbox")
-
-    start_of_week, end_of_week = get_week_date_range()
-    start_of_week_str = start_of_week.strftime('%d-%b-%Y')
-    end_of_week_str = end_of_week.strftime('%d-%b-%Y')
-
-    search_query = f'(OR (SUBJECT "DAIS") (SUBJECT "AIRS")) SINCE {start_of_week_str} BEFORE {end_of_week_str}'
-    status, messages = mail.search(None, search_query)
-
-    message_ids = messages[0].split()
-    if not message_ids:
-        return None
-
-    email_data = []
-    for num in message_ids:
-        status, msg_data = mail.fetch(num, "(RFC822)")
-        for response_part in msg_data:
-            if isinstance(response_part, tuple):
-                msg = email.message_from_bytes(response_part[1])
-                subject = decode_header(msg["Subject"])[0][0]
-                subject = subject.decode() if isinstance(subject, bytes) else subject
-                from_ = decode_mime_words(msg.get("From"))
-                date = parsedate_to_datetime(msg["Date"])
-                email_body = get_email_body(msg) or "No body available"
-                email_data.append({
-                    "subject": subject,
-                    "from": from_,
-                    "date": date.strftime('%d.%m.%Y'),
-                    "body": email_body
-                })
-
-    mail.logout()
-    return email_data
+# IMAP server details
+IMAP_SERVER = "mail.bilkent.edu.tr"
+IMAP_PORT = 993
 
 @app.route('/')
-def login():
+def home():
     return render_template('login.html')
 
-@app.route('/fetch', methods=['POST'])
-def fetch():
-    username = request.form['email']
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form['email']
     password = request.form['password']
 
-    # Fetch emails
-    email_data = fetch_emails(username, password)
-    if not email_data:
-        return render_template('process.html', error="No emails found.")
+    # Authenticate against Bilkent IMAP server
+    if authenticate_user(email, password):
+        # Save email and password in session for further operations
+        session['email'] = email
+        session['password'] = password
+        return redirect(url_for('fetch_emails'))
+    else:
+        flash("Login failed. Please check your credentials and try again.", "error")
+        return redirect(url_for('home'))
 
-    return render_template('process.html', email_data=email_data)
+def authenticate_user(email, password):
+    """Authenticate user against Bilkent IMAP server."""
+    try:
+        # Connect to Bilkent IMAP server
+        mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
+        
+        # Try to log in with the provided credentials
+        mail.login(email, password)
+        mail.logout()
+        return True  # If login succeeds, return True
+    except imaplib.IMAP4.error:
+        return False  # If login fails, return False
 
-@app.route('/generate_report')
+@app.route('/fetch_emails')
+def fetch_emails():
+    email = session.get('email')
+    password = session.get('password')
+
+    if not email or not password:
+        return redirect(url_for('home'))
+
+    # Fetch emails here (you can use your existing fetch_emails function)
+    emails = []  # Fetch emails based on your logic
+
+    # Example email data:
+    emails.append({'from': 'sender@example.com', 'subject': 'Test Email', 'date': '10/01/2024'})
+
+    return render_template('email_display.html', emails=emails)
+
+@app.route('/generate_report', methods=['POST'])
 def generate_report():
-    return render_template('output.html')
+    generate = request.form['generate']
+
+    if generate == 'no':
+        # Log out user and redirect to home
+        session.clear()
+        return redirect(url_for('home'))
+
+    if generate == 'yes':
+        # Generate report
+        report_html = generate_html_report()  # Use your actual report generation logic
+
+        # Store report in a temporary file
+        report_file_path = os.path.join(REPORT_DIR, f"{session['email']}_report.html")
+        with open(report_file_path, 'w') as f:
+            f.write(report_html)
+
+        # Redirect to report page
+        return redirect(url_for('report', report_file=report_file_path))
+
+@app.route('/report')
+def report():
+    report_file = request.args.get('report_file')
+
+    # Read report content
+    if os.path.exists(report_file):
+        with open(report_file, 'r') as f:
+            report_html = f.read()
+
+        # After displaying, delete the report
+        os.remove(report_file)
+        return render_template('report.html', report=report_html)
+
+    return "Report not found", 404
+
+def generate_html_report():
+    # Dummy HTML report content, replace with your logic
+    return "<h1>Generated Email Report</h1><p>Emails content goes here.</p>"
 
 if __name__ == '__main__':
     app.run(debug=True)
