@@ -1,0 +1,4 @@
+Flask==2.3.2
+awsgi==2.0.1
+imaplib2==2.57
+email6==6.0.0
