@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
+  <title>Glassmorphism Login Form</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="login-container">
+  <div class="wrapper">
     <form action="/login" method="POST">
       <h2>Login</h2>
       {% with messages = get_flashed_messages(with_categories=true) %}
@@ -21,13 +21,23 @@
       {% endwith %}
       <div class="input-field">
         <input type="email" name="email" required>
-        <label>Enter your Bilkent email</label>
+        <label>Enter your email</label>
       </div>
       <div class="input-field">
         <input type="password" name="password" required>
-        <label>Enter your email password</label>
+        <label>Enter your password</label>
+      </div>
+      <div class="forget">
+        <label for="remember">
+          <input type="checkbox" id="remember">
+          <p>Remember me</p>
+        </label>
+        <a href="#">Forgot password?</a>
       </div>
       <button type="submit">Log In</button>
+      <div class="register">
+        <p>Don't have an account? <a href="#">Register</a></p>
+      </div>
     </form>
   </div>
 </body>
