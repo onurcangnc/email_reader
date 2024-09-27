@@ -1,0 +1,44 @@
+name: Deploy Lambda Function
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy_lambda:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+
+      # Step 3: Install dependencies (Flask, awsgi, etc.)
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          deactivate
+
+      # Step 4: Zip the Lambda function and its dependencies
+      - name: Package Lambda function
+        run: |
+          zip -r function.zip .
+
+      # Step 5: Deploy the Lambda function to AWS
+      - name: Deploy Lambda function
+        uses: aws-actions/aws-cli-action@v1
+        with:
+          args: lambda update-function-code --function-name EmailReaderLambda --zip-file fileb://function.zip --architectures x86_64
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1  # Change this to your region
