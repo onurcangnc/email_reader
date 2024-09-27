@@ -1,4 +1,3 @@
 Flask==2.3.2
 awsgi==0.0.5
-imaplib2==3.6.0
-email==4.0.2
+imaplib2==3.6
