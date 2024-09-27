@@ -48,13 +48,9 @@ def fetch_emails():
     if not username or not password:
         return redirect(url_for('home'))
 
-    # Fetch emails (ensure this function is working)
+    # Fetch emails (make sure this function returns a list of email dictionaries)
     emails = fetch_emails_from_server(username, password)
-    
-    # Debugging: Ensure emails are being fetched properly
-    print(emails)
 
-    # Pass the emails to the template for rendering
     return render_template('email_display.html', emails=emails)
 
 def fetch_emails_from_server(username, password):

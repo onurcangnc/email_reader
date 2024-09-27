@@ -4,20 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Summary</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="../static/email_display.css">
 </head>
 <body>
-    <h1>Email Summary</h1>
-    <div class="emails">
-        {% for email in emails %}
-            <div class="email">
-                <h2>From: {{ email['from'] }}</h2>
-                <p><strong>Subject:</strong> {{ email['subject'] }}</p>
-                <p><strong>Date:</strong> {{ email['date'] }}</p>
-                <p>{{ email['body'] }}</p>
-            </div>
-            <hr>
-        {% endfor %}
+    <div class="container">
+        <h1>Email Summary</h1>
+        <div class="email-list">
+            {% for email in emails %}
+                <div class="email-card">
+                    <div class="email-header">
+                        <h2>{{ email['subject'] }}</h2>
+                        <p class="email-date">{{ email['date'] }}</p>
+                    </div>
+                    <div class="email-body">
+                        <p><strong>From:</strong> {{ email['from'] }}</p>
+                        <p>{{ email['body'] }}</p>
+                    </div>
+                </div>
+                <hr>
+            {% endfor %}
+        </div>
     </div>
 </body>
 </html>
