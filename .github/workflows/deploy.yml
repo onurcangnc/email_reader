@@ -1,6 +1,5 @@
 name: Deploy to Heroku
 
-# This specifies when the workflow should run. In this case, it runs when code is pushed to the main branch.
 on:
   push:
     branches:
@@ -11,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository to the runner
+      # Step 1: Check out the repository (full history)
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Unshallow the repository to include the full history
 
       # Step 2: Set up Python environment
       - name: Set up Python
