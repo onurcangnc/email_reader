@@ -1,11 +1,8 @@
+from flask import Flask, render_template, request, redirect, url_for
 import imaplib
 import email
 from email.header import decode_header
-from flask import Flask, render_template_string, request, jsonify
 from datetime import datetime, timedelta
-from email.utils import parsedate_to_datetime
-import os
-import awsgi  # Import AWS WSGI for Lambda compatibility
 
 app = Flask(__name__)
 
@@ -15,10 +12,7 @@ def decode_mime_words(s):
     decoded_string = ""
     for word, encoding in decoded_words:
         if isinstance(word, bytes):
-            if encoding:
-                decoded_string += word.decode(encoding)
-            else:
-                decoded_string += word.decode("utf-8")
+            decoded_string += word.decode(encoding) if encoding else word.decode('utf-8')
         else:
             decoded_string += word
     return decoded_string
@@ -40,29 +34,6 @@ def get_email_body(msg):
     else:
         return msg.get_payload(decode=True).decode("utf-8")
     return None
-
-# Helper function to generate an HTML report
-def generate_html_report(email_data):
-    html_content = '''<html><head><title>Email Summary</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; background-color: #f9f9f9; padding: 20px; }
-        h1 { color: #333; }
-        h2 { color: #4CAF50; }
-        h3 { color: #FF5722; }
-        .email-content { border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 10px; }
-        .date { color: #999; }
-    </style></head><body><h1>Email Summary</h1>'''
-
-    for subject, from_, body, date in email_data:
-        html_content += f'<div class="email-content">'
-        html_content += f"<h2>From: {from_}</h2>"
-        html_content += f"<h3>Subject: {subject}</h3>"
-        formatted_date = date.strftime('%d.%m.%Y')
-        html_content += f'<p class="date">Date: {formatted_date}</p>'
-        html_content += f"<div>{body}</div><hr></div>"
-
-    html_content += "</body></html>"
-    return html_content
 
 # Helper function to get the current week's date range
 def get_week_date_range():
@@ -99,30 +70,35 @@ def fetch_emails(username, password):
                 from_ = decode_mime_words(msg.get("From"))
                 date = parsedate_to_datetime(msg["Date"])
                 email_body = get_email_body(msg) or "No body available"
-                email_data.append((subject, from_, email_body, date))
+                email_data.append({
+                    "subject": subject,
+                    "from": from_,
+                    "date": date.strftime('%d.%m.%Y'),
+                    "body": email_body
+                })
 
     mail.logout()
     return email_data
 
-# Flask route for email fetching and rendering
-@app.route('/fetch-emails', methods=['POST'])
-def fetch_emails_endpoint():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+@app.route('/')
+def login():
+    return render_template('login.html')
+
+@app.route('/fetch', methods=['POST'])
+def fetch():
+    username = request.form['email']
+    password = request.form['password']
 
     # Fetch emails
-    email_data = fetch_emails(email, password)
-
+    email_data = fetch_emails(username, password)
     if not email_data:
-        return jsonify({'message': 'No emails found for this week.'}), 404
+        return render_template('process.html', error="No emails found.")
 
-    # Generate the HTML report
-    html_report = generate_html_report(email_data)
-    
-    # Render the HTML report
-    return render_template_string(html_report)
+    return render_template('process.html', email_data=email_data)
 
-# Lambda handler using AWS WSGI adapter for Flask
-def lambda_handler(event, context):
-    return awsgi.response(app, event, context)
+@app.route('/generate_report')
+def generate_report():
+    return render_template('output.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
