@@ -10,41 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12'
+          python-version: 3.12
 
-      # Step 3: Install dependencies (Flask, awsgi, etc.)
       - name: Install dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
-          deactivate
 
-      # Step 4: Zip the Lambda function and its dependencies
       - name: Package Lambda function
-        run: |
-          zip -r function.zip .
+        run: zip -r function.zip .
 
-      # Step 5: Install AWS CLI using unfor19/install-aws-cli-action
       - name: Install AWS CLI
         uses: unfor19/install-aws-cli-action@v1
 
-      # Step 6: Configure AWS credentials (using GitHub secrets)
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region us-east-1  # Update this to your region
+          aws configure set region ${{ secrets.AWS_REGION }}
+        shell: bash
 
-      # Step 7: Deploy the Lambda function using AWS CLI
       - name: Deploy Lambda function
         run: |
-          aws lambda update-function-code --function-name EmailReaderLambda --zip-file fileb://function.zip --architectures x86_64
+          aws lambda update-function-code --function-name arn:aws:lambda:eu-north-1:671793995464:function:EmailReaderLambda --zip-file fileb://function.zip
+        shell: bash
