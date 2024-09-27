@@ -43,14 +43,18 @@ jobs:
             --version-label ${{ github.sha }} \
             --source-bundle S3Bucket=elasticbeanstalk-eu-north-1-671793995464,S3Key=application.zip || echo "Version already exists"
 
-          # Check if environment exists
-          if ! aws elasticbeanstalk describe-environments --application-name email_reader --environment-names Emailreader-env | grep "Status: Terminated"; then
+          # Check if environment exists and its status
+          ENV_STATUS=$(aws elasticbeanstalk describe-environments --application-name email_reader --environment-names Emailreader-env --query 'Environments[0].Status' --output text)
+
+          if [ "$ENV_STATUS" == "Terminated" ]; then
+            # Re-create the terminated environment
             aws elasticbeanstalk create-environment \
               --application-name email_reader \
               --environment-name Emailreader-env \
               --version-label ${{ github.sha }} \
               --solution-stack-name "64bit Amazon Linux 2023 v4.1.4 running Python 3.11"
           else
+            # Update existing environment
             aws elasticbeanstalk update-environment \
               --application-name email_reader \
               --environment-name Emailreader-env \
