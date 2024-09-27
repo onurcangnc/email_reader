@@ -3,37 +3,40 @@ name: Deploy to Elastic Beanstalk
 on:
   push:
     branches:
-      - main  # Change to your default branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.11'  # Match your Elastic Beanstalk Python version
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Install AWS CLI
-      run: |
-        sudo apt-get update
-        sudo apt-get install awscli
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install awscli
 
-    - name: Deploy to Elastic Beanstalk
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: eu-north-1  # Your region
-      run: |
-        zip -r application.zip .
-        aws elasticbeanstalk create-application-version --application-name email_reader --version-label ${{ github.sha }} --source-bundle S3Bucket=elasticbeanstalk-eu-north-1-671793995464,S3Key=application.zip
-        aws elasticbeanstalk update-environment --application-name email_reader --environment-name Emailreader-env --version-label ${{ github.sha }}
+      - name: Create application zip
+        run: zip -r application.zip .
+
+      - name: Upload to S3 and Deploy to Elastic Beanstalk
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-north-1
+        run: |
+          aws s3 cp application.zip s3://elasticbeanstalk-eu-north-1-671793995464/application.zip
+          aws elasticbeanstalk create-application-version --application-name email_reader --version-label ${{ github.sha }} --source-bundle S3Bucket=elasticbeanstalk-eu-north-1-671793995464,S3Key=application.zip
+          aws elasticbeanstalk update-environment --application-name email_reader --environment-name Emailreader-env --version-label ${{ github.sha }}
