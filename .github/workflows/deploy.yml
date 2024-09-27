@@ -1,4 +1,4 @@
-name: Deploy to Elastic Beanstalk
+name: Deploy to Heroku
 
 on:
   push:
@@ -10,53 +10,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Check out the repository
       - name: Checkout code
         uses: actions/checkout@v2
 
+      # Step 2: Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install AWS CLI
+      # Step 4: Install Heroku CLI
+      - name: Install Heroku CLI
         run: |
-          sudo apt-get update
-          sudo apt-get install awscli
+          curl https://cli-assets.heroku.com/install.sh | sh
 
-      - name: Create application zip
-        run: zip -r application.zip .
-
-      - name: Create or Update Elastic Beanstalk Environment
+      # Step 5: Deploy to Heroku
+      - name: Deploy to Heroku
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-north-1
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
         run: |
-          aws s3 cp application.zip s3://elasticbeanstalk-eu-north-1-671793995464/application.zip
-          aws elasticbeanstalk create-application-version \
-            --application-name email_reader \
-            --version-label ${{ github.sha }} \
-            --source-bundle S3Bucket=elasticbeanstalk-eu-north-1-671793995464,S3Key=application.zip || echo "Version already exists"
-
-          # Check if environment exists and its status
-          ENV_STATUS=$(aws elasticbeanstalk describe-environments --application-name email_reader --environment-names Emailreader-env --query 'Environments[0].Status' --output text)
-
-          if [ "$ENV_STATUS" == "Terminated" ]; then
-            # Re-create the terminated environment
-            aws elasticbeanstalk create-environment \
-              --application-name email_reader \
-              --environment-name Emailreader-env \
-              --version-label ${{ github.sha }} \
-              --solution-stack-name "64bit Amazon Linux 2023 v4.1.4 running Python 3.11"
-          else
-            # Update existing environment
-            aws elasticbeanstalk update-environment \
-              --application-name email_reader \
-              --environment-name Emailreader-env \
-              --version-label ${{ github.sha }}
-          fi
+          git remote add heroku https://git.heroku.com/${{ secrets.HEROKU_APP_NAME }}.git
+          heroku git:remote -a ${{ secrets.HEROKU_APP_NAME }}
+          git push heroku main
