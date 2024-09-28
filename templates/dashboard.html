@@ -32,7 +32,10 @@
     </div>
 
     <script>
-        const socket = io.connect('http://' + document.domain + ':' + location.port);
+        // Dynamically adjust WebSocket connection to use WSS for secure pages
+        var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+        const socket = io.connect(protocol + window.location.hostname + ':' + location.port);
+
         const startButton = document.getElementById('start-fetching');
         const downloadButton = document.getElementById('download-report');
         const emailOutput = document.getElementById('email-output');
