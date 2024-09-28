@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from flask_socketio import SocketIO, emit
+from flask_cors import CORS
 import imaplib
 import email
 from email.header import decode_header
@@ -8,34 +9,42 @@ from datetime import datetime, timedelta
 import tempfile
 import os
 import time
+import subprocess
+import shlex
+
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = 'your-secret-key'
 socketio = SocketIO(app, async_mode='eventlet')
 
 IMAP_SERVER = "mail.bilkent.edu.tr"
 IMAP_PORT = 993
 
-# Global variable to store the report file path
+# Global variable to store the report file path and running CLI process
 report_file_path = None
+running_process = None  # Store the running process globally
 
 @app.route('/')
 def home():
     return render_template('login.html')
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    email = request.form['email']
-    password = request.form['password']
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
 
-    # Authenticate with IMAP
-    if authenticate_user(email, password):
-        session['email'] = email
-        session['password'] = password
-        return redirect(url_for('dashboard'))
+        # Authenticate the user
+        if authenticate_user(email, password):
+            session['email'] = email
+            session['password'] = password
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Login failed. Please check your credentials.", "error")
+            return redirect(url_for('home'))
     else:
-        flash("Login failed. Please check your credentials.", "error")
-        return redirect(url_for('home'))
+        return render_template('login.html')
 
 def authenticate_user(username, password):
     try:
@@ -152,9 +161,34 @@ def fetch_emails(username, password, emit_updates=False):
 
     return email_data  # Return email data for real-time streaming
 
+@app.route('/cli')
+def cli_interface():
+    # Directly serve the CLI interface without session or credential checks
+    return render_template('cli.html')
 
-import tempfile
-import os
+# WebSocket event for handling CLI commands for email_reader.py
+@socketio.on('start_cli')
+def start_cli():
+    try:
+        process = subprocess.Popen(
+            ['python', 'email_reader.py'], 
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        # Read process output line by line and emit via WebSocket
+        for line in iter(process.stdout.readline, ''):
+            socketio.emit('cli_output', {'output': line.strip()})
+        process.stdout.close()
+        process.wait()
+    except Exception as e:
+        socketio.emit('cli_output', {'output': str(e)})
+
+# WebSocket event for sending input to the subprocess
+@socketio.on('cli_input')
+def cli_input(data):
+    user_input = data.get('input') + '\n'  # Append newline to simulate terminal input
+    if running_process:
+        running_process.stdin.write(user_input)
+        running_process.stdin.flush()
 
 def generate_html_file(email_data):
     """Generate a report file for emails with enhanced design."""
@@ -247,7 +281,6 @@ def generate_html_file(email_data):
         f.write("</body></html>")
 
     return file_path, temp_dir  # Return the path to the generated report
-
 
 def safe_decode(value):
     if isinstance(value, bytes):

@@ -73,6 +73,29 @@ body {
     transform: translateY(-2px);
 }
 
+.login-box img {
+    width: 120px;
+    height: auto;
+    margin-bottom: 20px; /* Adds space below the logo */
+}
+
+.cli-login-btn {
+    margin-top: 20px;
+    background-color: #f44336; /* Red background for CLI login */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.cli-login-btn:hover {
+    background-color: #e53935; /* Darker red on hover */
+}
+
+
 /* Keyframes for background animation */
 @keyframes gradientBG {
     0% {

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-based CLI Interface (Email Reader)</title>
+    <link rel="stylesheet" href="../static/cli.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+</head>
+<body>
+    <div class="cli-container">
+        <h1>Web-based CLI Interface (Email Reader)</h1>
+        <div>
+            Click to Run Email Reader: <button id="run-email-reader-btn">Run Email Reader</button>
+        </div>
+        <div id="cli-output" class="cli-output"></div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    // Connect to the WebSocket server
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+    // When the 'Run Email Reader' button is clicked
+    document.getElementById('run-email-reader-btn').onclick = function() {
+        socket.emit('start_cli');  // Request to start the CLI process on the server
+    };
+
+    // Listen for output from the server
+    socket.on('cli_output', function(data) {
+        var output = data.output;  // The output from the server
+        var cliOutputDiv = document.getElementById('cli-output');
+        cliOutputDiv.innerHTML += '<pre>' + output + '</pre>';  // Display it in the CLI area
+    });
+</script>
+
+</html>

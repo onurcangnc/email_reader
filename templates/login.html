@@ -14,7 +14,7 @@
 
             <h2>Bilkent Mail Filtering System</h2>
             
-            <!-- Display error messages -->
+            <!-- Display error messages for web login -->
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
                 {% for category, message in messages %}
@@ -32,6 +32,9 @@
                 </div>
                 <button type="submit" class="login-btn">LOGIN</button>
             </form>
+            
+            <button onclick="window.location.href='{{ url_for('cli_interface') }}'" class="login-btn">Login through CLI</button>
+
         </div>
     </div>
 </body>
