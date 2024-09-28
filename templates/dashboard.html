@@ -11,79 +11,91 @@
     <div class="dashboard-container">
         <h1>Email Dashboard</h1>
 
-        <!-- Button to start fetching emails -->
-        <button id="start-fetching">Start Fetching Emails</button>
+        <!-- Buttons for fetching emails and downloading report -->
+        <div style="text-align: center;">
+            <button id="start-fetching" onclick="startFetchingEmails()">Start Fetching Emails</button>
+            <button id="download-report" style="display:none;" onclick="downloadReport()">Download Report</button>
+            <button id="logout-button" onclick="logout()" style="margin-left: 10px;">Logout</button> <!-- Logout button -->
+        </div>
 
-        <!-- Success modal -->
+        <!-- Success/Error modal -->
         <div id="modal-success" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <p>Email fetching operation was successful!</p>
+                <p id="modal-message">Email fetching operation was successful!</p>
             </div>
         </div>
 
         <!-- Email output section -->
         <div id="email-output"></div>
 
-        <!-- Button to download email report (hidden until fetching is done) -->
-        <button id="download-report" style="display:none;">Download Email Report</button>
     </div>
 
     <script>
         const socket = io.connect('http://' + document.domain + ':' + location.port);
-
         const startButton = document.getElementById('start-fetching');
-        const modal = document.getElementById('modal-success');
-        const span = document.getElementsByClassName('close')[0];
         const downloadButton = document.getElementById('download-report');
         const emailOutput = document.getElementById('email-output');
+        const modal = document.getElementById('modal-success');
+        const modalMessage = document.getElementById('modal-message');
 
-        // Open modal function
-        function openModal() {
+        // Function to display the modal with a custom message
+        function openModal(message) {
+            modalMessage.innerText = message;
             modal.style.display = 'block';
         }
 
-        // Close modal function
+        // Close modal
+        const span = document.getElementsByClassName('close')[0];
         span.onclick = function() {
             modal.style.display = 'none';
-        }
+        };
 
         window.onclick = function(event) {
             if (event.target == modal) {
                 modal.style.display = 'none';
             }
+        };
+
+        // Function to start fetching emails
+        function startFetchingEmails() {
+            startButton.style.display = 'none'; // Hide the Start button
+            socket.emit('start_fetching_emails');  // Start fetching emails
         }
 
-        // Disable start fetching button after first click
-        startButton.addEventListener('click', () => {
-            socket.emit('start_fetching_emails');
-            startButton.disabled = true;
-            openModal(); // Show success modal
-        });
-
-        // Listen for email updates from server
-        socket.on('email_update', function(msg) {
+        // Append fetched emails to the email output section
+        socket.on('email_update', function(email) {
             const emailData = `
                 <div class="email-entry">
-                    <p><strong>From:</strong> ${msg.from}</p>
-                    <p><strong>Subject:</strong> ${msg.subject}</p>
-                    <p><strong>Date:</strong> ${msg.date}</p>
-                    <p>${msg.body}</p>
-                    <hr>
+                    <div class="email-header">
+                        <h2>From: ${email.from}</h2>
+                        <h3>Subject: ${email.subject}</h3>
+                        <p class="date-time"><strong>Date:</strong> ${email.date} <strong>Time:</strong> ${email.time}</p>
+                        <p class="status"><strong>Status:</strong> ${email.status}</p>
+                    </div>
+                    <div class="email-body">
+                        <p>${email.body}</p>
+                    </div>
                 </div>
             `;
             emailOutput.innerHTML += emailData;
         });
 
-        // Show the download button when the fetching is complete
+        // Show the Download Report button when the fetching is complete
         socket.on('fetch_complete', function() {
-            downloadButton.style.display = 'inline'; // Show download button
+            openModal('Email fetching operation was successful!');  // Show success modal
+            downloadButton.style.display = 'inline-block'; // Show the Download button
         });
 
-        // Handle download report button click
-        downloadButton.addEventListener('click', () => {
-            window.location.href = '/download_report'; // Route to download the email report
-        });
+        // Function to download the generated report
+        function downloadReport() {
+            window.location.href = "/download_report";  // Redirect to the download route
+        }
+
+        // Function to handle logout
+        function logout() {
+            window.location.href = "/logout";  // Redirect to logout route
+        }
     </script>
 </body>
 </html>

@@ -1,39 +1,220 @@
+/* Importing Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(-45deg, #667eea, #764ba2, #43e97b, #38f9d7);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
 }
 
+/* Container for the dashboard */
 .dashboard-container {
-    width: 80%;
-    margin: 0 auto;
-    padding: 20px;
+    width: 90%;
+    max-width: 1200px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.1);
 }
 
+/* Title style */
 h1 {
     text-align: center;
     color: #333;
+    font-weight: 600;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
 }
 
+/* Email output section styling */
 #email-output {
-    background-color: #fff;
     padding: 20px;
     margin-top: 20px;
-    border-radius: 8px;
+    border-radius: 10px;
+    background-color: #fff;
     box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* Styling for each email entry */
 .email-entry {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    border-left: 5px solid #4CAF50;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
 }
 
+.email-entry:hover {
+    background-color: #f1f1f1;
+}
+
+/* Styling for email header */
+.email-header {
+    margin-bottom: 10px;
+}
+
+.email-header h2 {
+    font-size: 1.6rem;
+    color: #4CAF50;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.email-header h3 {
+    font-size: 1.2rem;
+    color: #FF5722;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+/* Styling for date and status */
+.email-header .date-time, 
+.email-header .status {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 5px;
+    font-style: italic;
+}
+
+.email-header .status {
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+/* Styling for email body */
+.email-body {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.6;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+}
+
+/* Styling for buttons */
 button {
-    display: block;
-    margin: 20px auto;
-    padding: 10px 20px;
+    display: inline-block;
+    margin: 20px 10px;  /* Adjust margin for side-by-side placement */
+    padding: 12px 24px;
     background-color: #4CAF50;
     color: #fff;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
+    font-size: 1.2rem;
     cursor: pointer;
-    font-size: 16px;
+    box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+}
+
+/* Specific styling for the logout button */
+#logout-button {
+    background-color: #f44336; /* Red background for Logout */
+    box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#logout-button:hover {
+    background-color: #e53935; /* Darker red on hover */
+    transform: translateY(-2px);
+}
+
+/* Align buttons horizontally */
+button {
+    display: inline-block;
+}
+
+/* Modal or Alert styling (for email fetch success message) */
+.alert-success {
+    text-align: center;
+    padding: 15px;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    margin: 10px auto;
+    width: 80%;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Background */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    background-color: rgba(0, 0, 0, 0.5); /* Black with opacity */
+}
+
+/* Modal Content */
+.modal-content {
+    background-color: #fff;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border-radius: 10px;
+    width: 60%; /* Could be more or less, depending on screen size */
+    box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Close Button */
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Success message */
+.modal-content p {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #4CAF50;
+    font-weight: bold;
+    margin: 20px 0;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Keyframes for background animation */
+@keyframes gradientBG {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
 }

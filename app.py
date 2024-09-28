@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from flask_socketio import SocketIO, emit
 import imaplib
 import email
@@ -15,6 +15,9 @@ socketio = SocketIO(app, async_mode='eventlet')
 
 IMAP_SERVER = "mail.bilkent.edu.tr"
 IMAP_PORT = 993
+
+# Global variable to store the report file path
+report_file_path = None
 
 @app.route('/')
 def home():
@@ -49,6 +52,27 @@ def dashboard():
         return redirect(url_for('home'))
     return render_template('dashboard.html')
 
+@app.route('/download_report')
+def download_report():
+    # Fetch emails without emitting real-time updates
+    email_data = fetch_emails(session['email'], session['password'], emit_updates=False)
+
+    # Generate the report and get the file path
+    report_file_path, temp_dir = generate_html_file(email_data)
+    
+    # Ensure the report file exists and trigger the download
+    if report_file_path and os.path.exists(report_file_path):
+        return send_file(report_file_path, as_attachment=True, download_name="emails_report.html")
+    else:
+        flash("No report found.", "error")
+        return redirect(url_for('dashboard'))
+
+@app.route('/logout')
+def logout():
+    # Clear session and redirect to home (login) page
+    session.clear()
+    return redirect(url_for('home'))
+
 # WebSocket event for starting email fetching and streaming
 @socketio.on('start_fetching_emails')
 def handle_email_fetching():
@@ -56,8 +80,9 @@ def handle_email_fetching():
     password = session.get('password')
 
     if email and password:
-        # Fetch emails and emit updates
-        fetch_emails(email, password, emit_updates=True)
+        # Fetch emails and generate report
+        global report_file_path
+        report_file_path = fetch_emails(email, password, emit_updates=True)
         emit('fetch_complete')  # Notify the client that fetching is complete
 
 def fetch_emails(username, password, emit_updates=False):
@@ -73,70 +98,156 @@ def fetch_emails(username, password, emit_updates=False):
 
     email_data = []
 
-    if not message_ids:
-        if emit_updates:
-            emit('email_update', {'data': 'No emails found this week.'})
-        mail.logout()
-        return email_data
-
     for num in message_ids:
-        status, msg_data = mail.fetch(num, "(RFC822)")
+        # Fetch the message with FLAGS
+        status, msg_data = mail.fetch(num, "(FLAGS RFC822)")
+
+        # Initialize variables for message content
+        msg = None
+        flags = None
+        
+        # Loop through the parts of the fetched message
         for response_part in msg_data:
             if isinstance(response_part, tuple):
-                msg = email.message_from_bytes(response_part[1])
-                subject = decode_header(msg["Subject"])[0][0]
-                subject = safe_decode(subject)
-                from_ = decode_mime_words(msg.get("From"))
-                date = parsedate_to_datetime(msg["Date"])
-                body = get_email_body(msg) or "No body available"
-                
-                email_entry = {
-                    'from': from_,
-                    'subject': subject,
-                    'body': body,
-                    'date': date.strftime('%d.%m.%Y')
-                }
-                
-                email_data.append(email_entry)
+                if b"FLAGS" in response_part[0]:  # Extract flags from the message data
+                    flags = response_part[0]
+                if response_part[1]:  # Extract the email content
+                    msg = email.message_from_bytes(response_part[1])
+        
+        if msg is None or flags is None:
+            continue  # Skip if there's an issue fetching the message or flags
 
-                if emit_updates:
-                    emit('email_update', email_entry)  # Emit updates in real-time
-                time.sleep(1)
+        # Process the email
+        subject = decode_header(msg["Subject"])[0][0]
+        subject = safe_decode(subject)
+        from_ = decode_mime_words(msg.get("From"))
+        date = parsedate_to_datetime(msg["Date"])
+        date_str = date.strftime('%d.%m.%Y')
+        time_str = date.strftime('%H:%M')
+
+        # Determine if the email is read or unread based on the flags
+        if b'\\Seen' in flags:
+            status = 'Read'
+        else:
+            status = 'Unread'
+
+        body = get_email_body(msg) or "No body available"
+        
+        email_entry = {
+            'from': from_,
+            'subject': subject,
+            'body': body,
+            'date': date_str,
+            'time': time_str,
+            'status': status
+        }
+
+        email_data.append(email_entry)
+
+        if emit_updates:
+            emit('email_update', email_entry)  # Emit updates in real-time
+        time.sleep(1)  # Simulate a delay for real-time effect
 
     mail.logout()
-    
-    if not emit_updates:
-        report_file_path, temp_dir = generate_html_file(email_data)
-        return report_file_path  # Return path to the report file
 
     return email_data  # Return email data for real-time streaming
 
+
+import tempfile
+import os
+
 def generate_html_file(email_data):
-    """Generate a report file for emails."""
+    """Generate a report file for emails with enhanced design."""
     temp_dir = tempfile.mkdtemp()
     file_path = os.path.join(temp_dir, "emails_report.html")
 
     with open(file_path, "w", encoding="utf-8") as f:
-        f.write("<html><body><h1>Email Report</h1><hr>")
-        for email_entry in email_data:
-            f.write(f"<h3>From: {email_entry['from']}</h3>")
-            f.write(f"<h3>Subject: {email_entry['subject']}</h3>")
-            f.write(f"<p>Date: {email_entry['date']}</p>")
-            f.write(f"<p>{email_entry['body']}</p>")
-            f.write("<hr>")
+        f.write('''<html><head><title>Email Summary</title>
+        <style>
+            body { 
+                font-family: 'Poppins', Arial, sans-serif; 
+                line-height: 1.8; 
+                background-color: #f4f4f4; 
+                padding: 30px; 
+                color: #333;
+            }
+            h1 { 
+                color: #333; 
+                text-align: center; 
+                margin-bottom: 30px;
+            }
+            .email-container {
+                max-width: 800px;
+                margin: 20px auto;
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+                border-left: 6px solid #4CAF50;
+            }
+            .email-content {
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 20px;
+                margin-bottom: 20px;
+            }
+            .email-content:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+            h2 {
+                font-size: 1.4rem;
+                color: #4CAF50;
+                margin-bottom: 10px;
+            }
+            h3 {
+                font-size: 1.2rem;
+                color: #FF5722;
+                margin-bottom: 10px;
+            }
+            p {
+                font-size: 1rem;
+                color: #555;
+            }
+            .date, .time, .status {
+                color: #888;
+                font-style: italic;
+            }
+            .status {
+                color: #4CAF50;
+                font-weight: bold;
+            }
+            a {
+                color: #4CAF50;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+        </style></head><body>''')
+
+        f.write("<h1>Email Summary</h1>")
+        
+        for email in email_data:
+            subject = email['subject']
+            from_ = email['from']
+            body = email['body']
+            date = email['date']
+            time = email.get('time', '')  # Ensure there's a time field
+            status = email.get('status', 'Unread')  # Example of adding status (read/unread)
+
+            f.write(f'<div class="email-container">')
+            f.write(f'<div class="email-content">')
+            f.write(f"<h2>From: {from_}</h2>")
+            f.write(f"<h3>Subject: {subject}</h3>")
+            f.write(f'<p class="date">Date: {date} <span class="time">(Time: {time})</span></p>')
+            f.write(f'<p class="status">Status: {status}</p>')
+            f.write(f"<p>{body}</p>")
+            f.write("</div></div>")
+        
         f.write("</body></html>")
 
-    return file_path, temp_dir
+    return file_path, temp_dir  # Return the path to the generated report
 
-@app.route('/download_report')
-def download_report():
-    # Fetch latest report without emitting updates
-    report_file_path = fetch_emails(session['email'], session['password'], emit_updates=False)
-    if report_file_path:
-        return send_file(report_file_path, as_attachment=True)
-    else:
-        flash("No report found.", "error")
-        return redirect(url_for('dashboard'))
 
 def safe_decode(value):
     if isinstance(value, bytes):
