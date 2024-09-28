@@ -5,6 +5,7 @@ colorama==0.4.6
 dnspython==2.6.1
 eventlet==0.37.0
 Flask==3.0.3
+Flask-Cors==5.0.0
 Flask-SocketIO==5.3.7
 greenlet==3.1.1
 gunicorn==23.0.0
@@ -15,7 +16,7 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
 packaging==24.1
-pyfiglet==0.7.5
+pyfiglet==1.0.2
 Pygments==2.18.0
 python-engineio==4.9.1
 python-socketio==5.11.4
