@@ -10,19 +10,21 @@
 <body>
     <div class="cli-container">
         <h1>Web-based CLI Interface (Email Reader)</h1>
+        <!-- Add the button to trigger the Email Reader -->
         <div>
             Click to Run Email Reader: <button id="run-email-reader-btn">Run Email Reader</button>
         </div>
+        <!-- CLI Output area -->
         <div id="cli-output" class="cli-output"></div>
     </div>
 </body>
 
 <script type="text/javascript">
-    // Connect to the WebSocket server
     var socket = io.connect('http://' + document.domain + ':' + location.port);
 
     // When the 'Run Email Reader' button is clicked
     document.getElementById('run-email-reader-btn').onclick = function() {
+        console.log('Button clicked, emitting start_cli');
         socket.emit('start_cli');  // Request to start the CLI process on the server
     };
 

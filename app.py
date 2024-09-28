@@ -169,18 +169,27 @@ def cli_interface():
 # WebSocket event for handling CLI commands for email_reader.py
 @socketio.on('start_cli')
 def start_cli():
+    global running_process
     try:
-        process = subprocess.Popen(
-            ['python', 'email_reader.py'], 
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        # Start the email_reader.py script as a subprocess
+        running_process = subprocess.Popen(
+            shlex.split("python email_reader.py"),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
         )
-        # Read process output line by line and emit via WebSocket
-        for line in iter(process.stdout.readline, ''):
-            socketio.emit('cli_output', {'output': line.strip()})
-        process.stdout.close()
-        process.wait()
+
+        # Continuously read the output from the script and send it to the client
+        while True:
+            output_line = running_process.stdout.readline()
+            if output_line:
+                emit('cli_output', {'output': output_line})  # Send real-time output to the client
+            else:
+                break
     except Exception as e:
-        socketio.emit('cli_output', {'output': str(e)})
+        emit('cli_output', {'output': str(e)})
 
 # WebSocket event for sending input to the subprocess
 @socketio.on('cli_input')
