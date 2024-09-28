@@ -16,7 +16,7 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
 packaging==24.1
-pyfiglet==1.0.2
+pyfiglet==0.7.5
 Pygments==2.18.0
 python-engineio==4.9.1
 python-socketio==5.11.4
