@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Dashboard</title>
+    <link rel="stylesheet" href="../static/dashboard.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>Email Dashboard</h1>
+
+        <!-- Button to start fetching emails -->
+        <button id="start-fetching">Start Fetching Emails</button>
+
+        <!-- Success modal -->
+        <div id="modal-success" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <p>Email fetching operation was successful!</p>
+            </div>
+        </div>
+
+        <!-- Email output section -->
+        <div id="email-output"></div>
+
+        <!-- Button to download email report (hidden until fetching is done) -->
+        <button id="download-report" style="display:none;">Download Email Report</button>
+    </div>
+
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        const startButton = document.getElementById('start-fetching');
+        const modal = document.getElementById('modal-success');
+        const span = document.getElementsByClassName('close')[0];
+        const downloadButton = document.getElementById('download-report');
+        const emailOutput = document.getElementById('email-output');
+
+        // Open modal function
+        function openModal() {
+            modal.style.display = 'block';
+        }
+
+        // Close modal function
+        span.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Disable start fetching button after first click
+        startButton.addEventListener('click', () => {
+            socket.emit('start_fetching_emails');
+            startButton.disabled = true;
+            openModal(); // Show success modal
+        });
+
+        // Listen for email updates from server
+        socket.on('email_update', function(msg) {
+            const emailData = `
+                <div class="email-entry">
+                    <p><strong>From:</strong> ${msg.from}</p>
+                    <p><strong>Subject:</strong> ${msg.subject}</p>
+                    <p><strong>Date:</strong> ${msg.date}</p>
+                    <p>${msg.body}</p>
+                    <hr>
+                </div>
+            `;
+            emailOutput.innerHTML += emailData;
+        });
+
+        // Show the download button when the fetching is complete
+        socket.on('fetch_complete', function() {
+            downloadButton.style.display = 'inline'; // Show download button
+        });
+
+        // Handle download report button click
+        downloadButton.addEventListener('click', () => {
+            window.location.href = '/download_report'; // Route to download the email report
+        });
+    </script>
+</body>
+</html>

@@ -1,29 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Summary</title>
-    <link rel="stylesheet" href="../static/email_display.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Summary</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Email Summary</h1>
-        <div class="email-list">
-            {% for email in emails %}
-                <div class="email-card">
-                    <div class="email-header">
-                        <h2>{{ email['subject'] }}</h2>
-                        <p class="email-date">{{ email['date'] }}</p>
-                    </div>
-                    <div class="email-body">
-                        <p><strong>From:</strong> {{ email['from'] }}</p>
-                        <p>{{ email['body'] }}</p>
-                    </div>
-                </div>
-                <hr>
-            {% endfor %}
-        </div>
-    </div>
+  <h1>Email Summary</h1>
+  <div class="emails">
+    {% for email in emails %}
+      <div class="email">
+        <h2>{{ email['from'] }}</h2>
+        <p><strong>Subject:</strong> {{ email['subject'] }}</p>
+        <p><strong>Date:</strong> {{ email['date'] }}</p>
+      </div>
+    {% endfor %}
+  </div>
+  <div>
+    <form action="/generate_report" method="POST">
+      <p>Do you want to generate a full report of the emails?</p>
+      <button type="submit" name="generate" value="yes">Yes</button>
+      <button type="submit" name="generate" value="no">No</button>
+    </form>
+  </div>
 </body>
 </html>
