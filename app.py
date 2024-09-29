@@ -64,14 +64,14 @@ def dashboard():
 @app.route('/download_report')
 def download_report():
     # Fetch emails without emitting real-time updates
-    email_data = fetch_emails(session['email'], session['password'], emit_updates=False)
+    email_data = fetch_emails_with_dynamic_range(session['email'], session['password'], emit_updates=False, max_weeks=4)
 
     # Generate the report and get the file path
     report_file_path, temp_dir = generate_html_file(email_data)
     
     # Ensure the report file exists and trigger the download
     if report_file_path and os.path.exists(report_file_path):
-        return send_file(report_file_path, as_attachment=True, download_name="emails_report.html")
+        return send_file(report_file_path, as_attachment=True, download_name="bilkent_emails_report.html")
     else:
         flash("No report found.", "error")
         return redirect(url_for('dashboard'))
@@ -89,44 +89,39 @@ def handle_email_fetching():
     password = session.get('password')
 
     if email and password:
-        # Fetch emails and generate report
+        # Dynamically fetch emails and generate report according to current day.
         global report_file_path
-        report_file_path = fetch_emails(email, password, emit_updates=True)
+        report_file_path = fetch_emails_with_dynamic_range(email, password, emit_updates=True, max_weeks=4)
         emit('fetch_complete')  # Notify the client that fetching is complete
 
-def fetch_emails(username, password, emit_updates=False):
+def fetch_emails(username, password, since_date, before_date, emit_updates=False):
     """Fetch emails from the Bilkent IMAP server."""
     mail = imaplib.IMAP4_SSL(IMAP_SERVER)
     mail.login(username, password)
     mail.select("inbox")
 
-    start_of_week, end_of_week = get_week_date_range()
-    search_query = f'(OR (SUBJECT "DAIS") (SUBJECT "AIRS")) SINCE {start_of_week.strftime("%d-%b-%Y")} BEFORE {end_of_week.strftime("%d-%b-%Y")}'
+    # Search for emails in the given date range
+    search_query = f'(OR (OR (SUBJECT "DAIS") (SUBJECT "AIRS")) (SUBJECT "[BAIS-ANNC:BILKENT] EXPERIMENT")) SINCE {since_date} BEFORE {before_date}'
     status, messages = mail.search(None, search_query)
     message_ids = messages[0].split()
 
     email_data = []
 
     for num in message_ids:
-        # Fetch the message with FLAGS
         status, msg_data = mail.fetch(num, "(FLAGS RFC822)")
-
-        # Initialize variables for message content
         msg = None
         flags = None
-        
-        # Loop through the parts of the fetched message
+
         for response_part in msg_data:
             if isinstance(response_part, tuple):
-                if b"FLAGS" in response_part[0]:  # Extract flags from the message data
+                if b"FLAGS" in response_part[0]:
                     flags = response_part[0]
-                if response_part[1]:  # Extract the email content
+                if response_part[1]:
                     msg = email.message_from_bytes(response_part[1])
-        
-        if msg is None or flags is None:
-            continue  # Skip if there's an issue fetching the message or flags
 
-        # Process the email
+        if msg is None or flags is None:
+            continue
+
         subject = decode_header(msg["Subject"])[0][0]
         subject = safe_decode(subject)
         from_ = decode_mime_words(msg.get("From"))
@@ -134,11 +129,7 @@ def fetch_emails(username, password, emit_updates=False):
         date_str = date.strftime('%d.%m.%Y')
         time_str = date.strftime('%H:%M')
 
-        # Determine if the email is read or unread based on the flags
-        if b'\\Seen' in flags:
-            status = 'Read'
-        else:
-            status = 'Unread'
+        status = 'Read' if b'\\Seen' in flags else 'Unread'
 
         body = get_email_body(msg) or "No body available"
         
@@ -148,18 +139,54 @@ def fetch_emails(username, password, emit_updates=False):
             'body': body,
             'date': date_str,
             'time': time_str,
-            'status': status
+            'status': status,
         }
 
         email_data.append(email_entry)
 
         if emit_updates:
-            emit('email_update', email_entry)  # Emit updates in real-time
-        time.sleep(1)  # Simulate a delay for real-time effect
+            emit('email_update', email_entry)
+        time.sleep(1)
 
     mail.logout()
 
-    return email_data  # Return email data for real-time streaming
+    return email_data
+
+
+def fetch_emails_with_dynamic_range(username, password, max_weeks=4, emit_updates=False):
+    """
+    Dinamik tarih aralığıyla e-postaları arayan bir fonksiyon.
+    Belirtilen haftalık aralıklarla geriye doğru e-posta araması yapar.
+    
+    :param username: Kullanıcının e-posta adresi
+    :param password: Kullanıcının şifresi
+    :param max_weeks: Geriye dönük maksimum hafta sayısı
+    :param emit_updates: Real-time güncellemeler gönderme
+    :return: E-posta verisi listesi
+    """
+    email_data = []
+    
+    for week in range(max_weeks):
+        # Hafta aralığını belirle
+        start_of_week, end_of_week = get_week_date_range(weeks_back=week)
+        since_date = start_of_week.strftime('%d-%b-%Y')
+        before_date = (end_of_week + timedelta(days=1)).strftime('%d-%b-%Y')  # BEFORE günü dahil etmez
+
+        # E-postaları fetch etmek için mevcut `fetch_emails` fonksiyonunu çağır
+        email_data = fetch_emails(username, password, since_date, before_date, emit_updates=emit_updates)
+        
+        # Eğer e-posta bulunmuşsa döngüyü kır
+        if email_data:
+            break
+        else:
+            print(f"Hafta {week + 1}: {since_date} ile {before_date} arasında e-posta bulunamadı, bir önceki haftaya bakılıyor...")
+
+    if not email_data:
+        print("Hiçbir haftada e-posta bulunamadı.")
+    
+    return email_data
+
+
 
 @app.route('/cli')
 def cli_interface():
@@ -319,11 +346,13 @@ def get_email_body(msg):
                 return part.get_payload(decode=True).decode("utf-8")
     return msg.get_payload(decode=True).decode("utf-8")
 
-def get_week_date_range():
+def get_week_date_range(weeks_back=0):
+    """Belirli bir hafta geriye giderek haftalık tarih aralığını döndür."""
     today = datetime.now()
-    start_of_week = today - timedelta(days=today.weekday())  # Monday
-    end_of_week = start_of_week + timedelta(days=6)  # Sunday
+    start_of_week = today - timedelta(days=today.weekday()) - timedelta(weeks=weeks_back)
+    end_of_week = start_of_week + timedelta(days=6)  # Pazartesi'den Pazar'a kadar
     return start_of_week, end_of_week
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

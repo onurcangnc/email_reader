@@ -42,6 +42,9 @@
         const modal = document.getElementById('modal-success');
         const modalMessage = document.getElementById('modal-message');
 
+        // Array to store emails
+        const emails = [];
+
         // Function to display the modal with a custom message
         function openModal(message) {
             modalMessage.innerText = message;
@@ -66,22 +69,51 @@
             socket.emit('start_fetching_emails');  // Start fetching emails
         }
 
+        // Function to sort and display emails
+        function displayEmails() {
+            // Sort the emails first by unread status (Unread first), then by date and time (newest first)
+            emails.sort((a, b) => {
+                // First compare by unread status
+                if (a.status === 'Unread' && b.status !== 'Unread') {
+                    return -1;
+                }
+                if (a.status !== 'Unread' && b.status === 'Unread') {
+                    return 1;
+                }
+
+                // Then compare by date and time (newest first)
+                const dateA = new Date(`${a.date} ${a.time}`);
+                const dateB = new Date(`${b.date} ${b.time}`);
+                return dateB - dateA;
+            });
+
+            // Clear the current output before re-rendering the sorted emails
+            emailOutput.innerHTML = '';
+
+            // Re-render the emails in sorted order
+            emails.forEach(function(email) {
+                const emailData = `
+                    <div class="email-entry">
+                        <div class="email-header">
+                            <h2>From: ${email.from}</h2>
+                            <h3>Subject: ${email.subject}</h3>
+                            <p class="date-time"><strong>Date:</strong> ${email.date || 'Unknown Date'} <strong>Time:</strong> ${email.time || 'Unknown Time'}</p>
+                            <p class="status"><strong>Status:</strong> ${email.status}</p>
+                        </div>
+                        <div class="email-body">
+                            <p>${email.body}</p>
+                        </div>
+                    </div>
+                `;
+                // Use "prepend" instead of "append" to put the newest email at the top
+                emailOutput.insertAdjacentHTML('afterbegin', emailData);
+            });
+        }
+
         // Append fetched emails to the email output section
         socket.on('email_update', function(email) {
-            const emailData = `
-                <div class="email-entry">
-                    <div class="email-header">
-                        <h2>From: ${email.from}</h2>
-                        <h3>Subject: ${email.subject}</h3>
-                        <p class="date-time"><strong>Date:</strong> ${email.date} <strong>Time:</strong> ${email.time}</p>
-                        <p class="status"><strong>Status:</strong> ${email.status}</p>
-                    </div>
-                    <div class="email-body">
-                        <p>${email.body}</p>
-                    </div>
-                </div>
-            `;
-            emailOutput.innerHTML += emailData;
+            emails.push(email); // Add the new email to the emails array
+            displayEmails();    // Sort and display the emails
         });
 
         // Show the Download Report button when the fetching is complete
