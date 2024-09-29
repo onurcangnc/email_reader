@@ -101,7 +101,7 @@ def fetch_emails(username, password, since_date, before_date, emit_updates=False
     mail.select("inbox")
 
     # Search for emails in the given date range
-    search_query = f'(OR (OR (SUBJECT "DAIS") (SUBJECT "AIRS")) (SUBJECT "[BAIS-ANNC:BILKENT] EXPERIMENT")) SINCE {since_date} BEFORE {before_date}'
+    search_query = f'(OR (OR (SUBJECT "DAIS") (SUBJECT "AIRS")) (OR (SUBJECT "[BAIS-ANNC:BILKENT] EXPERIMENT") (SUBJECT "Transportation"))) SINCE {since_date} BEFORE {before_date}'
     status, messages = mail.search(None, search_query)
     message_ids = messages[0].split()
 
