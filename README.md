@@ -2,11 +2,15 @@
 
 - Flask-based email reader application that processes emails and provides an the most necessary mails. It supports integration with GitHub Actions for continuous integration (CI) and deployment (CD) to Heroku.
 
+![Example run](./email_reader.gif)
+
 ## Features
-- Fetches and processes emails from a specified account.
+- Fetches and processes the most useful emails from a specified account.
 - Filtering emails and provides useful ones.
 - Continuous Integration (CI) with GitHub Actions.
 - Continuous Deployment (CD) to Heroku.
+- Bilkent Experiment Mails (Paid + GE250/251)
+- DAIS, AIRS mails coming from department personnel
 
 ## Prerequisites
 
