@@ -164,7 +164,7 @@ def fetch_emails_with_dynamic_range(username, password, max_weeks=4, emit_update
         # Get the start (Monday) and end (Sunday) of the past week
         start_of_week, end_of_week = get_week_date_range(weeks_back=week)
         since_date = start_of_week.strftime('%d-%b-%Y')  # Example: '23-Sep-2024'
-        before_date = (end_of_week + timedelta(days=1)).strftime('%d-%b-%Y')  # Exclude Sunday by adding 1 day
+        before_date = (end_of_week + timedelta(days=2)).strftime('%d-%b-%Y')  # Exclude Sunday by adding 1 day
 
         # Fetch emails for the calculated date range
         email_data = fetch_emails(username, password, since_date, before_date, emit_updates=emit_updates)
