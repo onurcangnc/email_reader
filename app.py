@@ -101,7 +101,7 @@ def fetch_emails(username, password, since_date, before_date, emit_updates=False
     mail.select("inbox")
 
     # Search for emails in the given date range
-    search_query = f'(OR (OR (SUBJECT "DAIS") (SUBJECT "AIRS")) (OR (OR (SUBJECT "[BAIS-ANNC:BILKENT] EXPERIMENT") (SUBJECT "TRANSPORTATION")) (SUBJECT "From the Transportation Unit")) SINCE {since_date} BEFORE {before_date})'
+    search_query = f'(OR (OR (SUBJECT "DAIS") (SUBJECT "AIRS")) (OR (OR (SUBJECT "[BAIS-ANNC:BILKENT] EXPERIMENT") (SUBJECT "TRANSPORTATION")) (OR (SUBJECT "From the Transportation Unit") (SUBJECT "BUSES"))) SINCE {since_date} BEFORE {before_date})'
 
     status, messages = mail.search(None, search_query)
     message_ids = messages[0].split()
@@ -156,36 +156,27 @@ def fetch_emails(username, password, since_date, before_date, emit_updates=False
 
 def fetch_emails_with_dynamic_range(username, password, max_weeks=4, emit_updates=False):
     """
-    Dinamik tarih aralığıyla e-postaları arayan bir fonksiyon.
-    Belirtilen haftalık aralıklarla geriye doğru e-posta araması yapar.
-    
-    :param username: Kullanıcının e-posta adresi
-    :param password: Kullanıcının şifresi
-    :param max_weeks: Geriye dönük maksimum hafta sayısı
-    :param emit_updates: Real-time güncellemeler gönderme
-    :return: E-posta verisi listesi
+    Dynamically search emails going backwards from today week by week for up to max_weeks.
     """
     email_data = []
     
     for week in range(max_weeks):
-        # Hafta aralığını belirle
+        # Get the start (Monday) and end (Sunday) of the past week
         start_of_week, end_of_week = get_week_date_range(weeks_back=week)
-        since_date = start_of_week.strftime('%d-%b-%Y')
-        before_date = (end_of_week + timedelta(days=1)).strftime('%d-%b-%Y')  # BEFORE günü dahil etmez
+        since_date = start_of_week.strftime('%d-%b-%Y')  # Example: '23-Sep-2024'
+        before_date = (end_of_week + timedelta(days=1)).strftime('%d-%b-%Y')  # Exclude Sunday by adding 1 day
 
-        # E-postaları fetch etmek için mevcut `fetch_emails` fonksiyonunu çağır
+        # Fetch emails for the calculated date range
         email_data = fetch_emails(username, password, since_date, before_date, emit_updates=emit_updates)
         
-        # Eğer e-posta bulunmuşsa döngüyü kır
+        # Break the loop if emails are found
         if email_data:
             break
         else:
-            print(f"Hafta {week + 1}: {since_date} ile {before_date} arasında e-posta bulunamadı, bir önceki haftaya bakılıyor...")
+            print(f"No emails found between {since_date} and {before_date}, checking previous week...")
 
-    if not email_data:
-        print("Hiçbir haftada e-posta bulunamadı.")
-    
     return email_data
+
 
 
 
@@ -348,11 +339,17 @@ def get_email_body(msg):
     return msg.get_payload(decode=True).decode("utf-8")
 
 def get_week_date_range(weeks_back=0):
-    """Belirli bir hafta geriye giderek haftalık tarih aralığını döndür."""
-    today = datetime.now()
-    start_of_week = today - timedelta(days=today.weekday()) - timedelta(weeks=weeks_back)
-    end_of_week = start_of_week + timedelta(days=6)  # Pazartesi'den Pazar'a kadar
+    """Return the start (Monday) and end (Sunday) of a past week based on weeks_back."""
+    today = datetime.now()  # Current day
+    # Get the last Sunday (even if today is not Sunday)
+    last_sunday = today - timedelta(days=today.weekday() + 1)  # Most recent past Sunday
+    
+    # Calculate the start of the week (Monday) and end of the week (Sunday) based on weeks_back
+    start_of_week = last_sunday - timedelta(days=6 + weeks_back * 7)  # Calculate Monday of past weeks
+    end_of_week = last_sunday - timedelta(weeks=weeks_back * 7)  # Calculate Sunday of past weeks
+
     return start_of_week, end_of_week
+
 
 
 if __name__ == '__main__':

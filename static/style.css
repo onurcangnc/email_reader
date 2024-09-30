@@ -6,7 +6,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: linear-gradient(-45deg, #667eea, #764ba2, #43e97b, #38f9d7);
+    background: linear-gradient(-90deg, #F22233 0%, #035AA6 33%, #0367A6 66%, #FCFEFF 100%);
     background-size: 400% 400%;
     animation: gradientBG 15s ease infinite;
     margin: 0;
@@ -61,6 +61,7 @@ body {
     padding: 15px 30px;
     background-color: #4CAF50;
     color: #fff;
+    margin: 20px 0px;
     font-size: 1.5rem;
     border: none;
     border-radius: 8px;
