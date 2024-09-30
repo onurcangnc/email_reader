@@ -218,10 +218,15 @@ def cli_input(data):
         running_process.stdin.write(user_input)
         running_process.stdin.flush()
 
+from datetime import datetime
+
 def generate_html_file(email_data):
-    """Generate a report file for emails with enhanced design."""
+    """Generate a report file for emails with enhanced design and sorted by both date and time."""
     temp_dir = tempfile.mkdtemp()
     file_path = os.path.join(temp_dir, "emails_report.html")
+
+    # Ensure both date and time are taken into account for sorting
+    email_data = sorted(email_data, key=lambda x: datetime.strptime(f"{x['date']} {x['time']}", '%d.%m.%Y %H:%M'), reverse=True)
 
     with open(file_path, "w", encoding="utf-8") as f:
         f.write('''<html><head><title>Email Summary</title>
@@ -288,7 +293,7 @@ def generate_html_file(email_data):
         </style></head><body>''')
 
         f.write("<h1>Email Summary</h1>")
-        
+
         for email in email_data:
             subject = email['subject']
             from_ = email['from']
@@ -308,7 +313,8 @@ def generate_html_file(email_data):
         
         f.write("</body></html>")
 
-    return file_path, temp_dir  # Return the path to the generated report
+    return file_path, temp_dir
+
 
 def safe_decode(value):
     if isinstance(value, bytes):
