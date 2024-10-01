@@ -156,27 +156,35 @@ def fetch_emails(username, password, since_date, before_date, emit_updates=False
 
 def fetch_emails_with_dynamic_range(username, password, max_weeks=4, emit_updates=False):
     """
-    Dynamically search emails going backwards from today week by week for up to max_weeks.
+    Dynamically search emails going backwards from today, week by week, for up to max_weeks.
     """
     email_data = []
-    
+    today = datetime.now()
+
+    # Get the start of this week and today's end-of-day as initial boundaries
     for week in range(max_weeks):
-        # Get the start (Monday) and end (Sunday) of the past week
+        # Calculate the start and end of each past week
         start_of_week, end_of_week = get_week_date_range(weeks_back=week)
-        since_date = start_of_week.strftime('%d-%b-%Y')  # Example: '23-Sep-2024'
-        before_date = (end_of_week + timedelta(days=2)).strftime('%d-%b-%Y')  # Exclude Sunday by adding 1 day
+
+        # If it's the current week, ensure we include today by adjusting 'before_date' to tomorrow
+        if week == 0:
+            before_date = (today + timedelta(days=1)).strftime('%d-%b-%Y')  # Include today
+        else:
+            # For past weeks, add 1 day after the end of the week
+            before_date = (end_of_week + timedelta(days=1)).strftime('%d-%b-%Y')
+
+        since_date = start_of_week.strftime('%d-%b-%Y')
 
         # Fetch emails for the calculated date range
-        email_data = fetch_emails(username, password, since_date, before_date, emit_updates=emit_updates)
-        
-        # Break the loop if emails are found
+        email_data += fetch_emails(username, password, since_date, before_date, emit_updates=emit_updates)
+
+        # If emails are found, stop searching
         if email_data:
             break
         else:
             print(f"No emails found between {since_date} and {before_date}, checking previous week...")
 
     return email_data
-
 
 
 
