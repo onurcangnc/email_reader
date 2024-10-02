@@ -71,20 +71,21 @@
 
         // Function to sort and display emails
         function displayEmails() {
-            // Sort the emails first by unread status (Unread first), then by date and time (newest first)
+            // Sort the emails by date first (newest first), and by time (newest first) if the dates are the same
             emails.sort((a, b) => {
-                // First compare by unread status
-                if (a.status === 'Unread' && b.status !== 'Unread') {
-                    return -1;
-                }
-                if (a.status !== 'Unread' && b.status === 'Unread') {
-                    return 1;
-                }
+                // Parse the date strings into Date objects for accurate comparison
+                const dateA = new Date(a.date.split('.').reverse().join('-')); // Convert DD.MM.YYYY to YYYY-MM-DD
+                const dateB = new Date(b.date.split('.').reverse().join('-'));
 
-                // Then compare by date and time (newest first)
-                const dateA = new Date(`${a.date} ${a.time}`);
-                const dateB = new Date(`${b.date} ${b.time}`);
-                return dateB - dateA;
+                // Compare by date first
+                if (dateA < dateB) return 1;
+                if (dateA > dateB) return -1;
+
+                // If dates are the same, compare by time
+                const timeA = new Date(`1970-01-01T${a.time}:00`); // Use fixed date to compare times
+                const timeB = new Date(`1970-01-01T${b.time}:00`);
+                
+                return timeB - timeA; // Latest time first
             });
 
             // Clear the current output before re-rendering the sorted emails
@@ -105,8 +106,8 @@
                         </div>
                     </div>
                 `;
-                // Use "prepend" instead of "append" to put the newest email at the top
-                emailOutput.insertAdjacentHTML('afterbegin', emailData);
+                // Use "prepend" to ensure the newest email is at the top
+                emailOutput.insertAdjacentHTML('beforeend', emailData);
             });
         }
 
